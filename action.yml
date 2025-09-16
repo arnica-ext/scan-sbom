@@ -1,0 +1,280 @@
+name: Arnica SBOM Upload
+description: Upload an SBOM to Arnica and wait for the scan to complete
+branding:
+  icon: upload-cloud
+  color: blue
+inputs:
+  repository-url:
+    description: Repository URL associated with the SBOM
+    required: true
+  branch:
+    description: Branch name associated with the SBOM
+    required: false
+    default: main
+  sbom-file:
+    description: Path to the SBOM file (JSON) in the workspace
+    required: true
+  scan-path:
+    description: Repository path to associate with the scan
+    required: true
+  api-base-url:
+    description: Arnica API base URL (e.g., https://api.arnica.io)
+    required: true
+    default: https://api.arnica.io
+  curl-flags:
+    description: Additional flags to pass to curl (optional)
+    required: false
+    default: ""
+  scan-timeout-seconds:
+    description: Maximum time to wait for scan completion in seconds
+    required: false
+    default: "900"
+  api-token:
+    description: Arnica API token (prefer passing via secrets)
+    required: false
+  on-findings:
+    description: Behavior when findings are detected (Failure). One of fail|alert|pass
+    required: false
+    default: fail
+outputs:
+  scan-id:
+    description: Arnica scan identifier
+    value: ${{ steps.arnica.outputs.scan_id }}
+  status:
+    description: Final scan status (Success, Failure, Error, Skipped, Timeout)
+    value: ${{ steps.arnica.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - name: Ensure jq is installed
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v jq >/dev/null 2>&1; then
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+        fi
+
+    - name: Upload SBOM to Arnica and wait for scan
+      id: arnica
+      shell: bash
+      env:
+        REPO: ${{ inputs.repository-url }}
+        BRANCH: ${{ inputs.branch }}
+        SBOM: ${{ inputs.sbom-file }}
+        SCAN_PATH: ${{ inputs.scan-path }}
+        API: ${{ inputs.api-base-url }}
+        CURL_FLAGS: ${{ inputs.curl-flags }}
+        SCAN_TIMEOUT_SECONDS: ${{ inputs.scan-timeout-seconds }}
+        ARNICA_API_TOKEN: ${{ env.ARNICA_API_TOKEN }}
+        API_TOKEN_INPUT: ${{ inputs.api-token }}
+        ON_FINDINGS: ${{ inputs.on-findings }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${REPO:-}" ] || [ -z "${BRANCH:-}" ] || [ -z "${SBOM:-}" ] || [ -z "${SCAN_PATH:-}" ]; then
+          echo "Missing required inputs."
+          exit 1
+        fi
+
+        if [ -z "${API:-}" ]; then
+          echo "API endpoint is not defined. Provide input 'api-base-url'."
+          exit 1
+        fi
+
+        # Allow absolute path for sbom-file; fallback to relative under scan-path
+        if [ -f "$SBOM" ]; then
+          SBOM_PATH="$SBOM"
+        else
+          # Normalize local directory for file lookup (strip leading slash)
+          LOCAL_SCAN_DIR="${SCAN_PATH#/}"
+          if [ -z "$LOCAL_SCAN_DIR" ] || [ "$LOCAL_SCAN_DIR" = "/" ]; then
+            FILE_DIR="."
+          else
+            FILE_DIR="$LOCAL_SCAN_DIR"
+          fi
+          SBOM_PATH="${FILE_DIR%/}/${SBOM}"
+        fi
+        if [ ! -f "$SBOM_PATH" ]; then
+          echo "SBOM file not found: $SBOM_PATH"
+          exit 1
+        fi
+
+        # Resolve to absolute path for robustness
+        SBOM_ABS=$(realpath "$SBOM_PATH" 2>/dev/null || readlink -f "$SBOM_PATH" 2>/dev/null || echo "$SBOM_PATH")
+
+        if [ -n "${API_TOKEN_INPUT:-}" ]; then
+          TOKEN="$API_TOKEN_INPUT"
+        elif [ -n "${ARNICA_API_TOKEN:-}" ]; then
+          TOKEN="$ARNICA_API_TOKEN"
+        elif [ -f .token ]; then
+          TOKEN=$(<.token)
+        else
+          echo "Error: API token is missing. Pass env ARNICA_API_TOKEN from a secret."
+          exit 1
+        fi
+
+        SCAN_TIMEOUT="${SCAN_TIMEOUT_SECONDS:-900}"
+
+        echo "Starting SBOM scan..."
+        # Normalize API path to start with '/'; root if empty
+        API_PATH="$SCAN_PATH"
+        case "$API_PATH" in
+          /*) : ;;  # already absolute
+          "") API_PATH="/" ;;
+          *) API_PATH="/$API_PATH" ;;
+        esac
+
+        REQUEST_BODY=$(jq -n \
+          --arg repo "$REPO" \
+          --arg branch "$BRANCH" \
+          --arg path "$API_PATH" \
+          '{repositoryUrl: $repo, branch: $branch, path: $path}')
+
+        RESULT=$(curl ${CURL_FLAGS:-} -Ss -X 'POST' \
+          "${API}/v1/sbom/scan/upload" \
+          -H 'accept: application/json' \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H 'Content-Type: application/json' \
+          -d "$REQUEST_BODY")
+
+        STATUS=$(echo "$RESULT" | jq -r .statusCode)
+        if [ "$STATUS" != "null" ] && [ "$STATUS" -ne 200 ]; then
+          MESSAGE=$(echo "$RESULT" | jq -r .message)
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "## Arnica SBOM Scan"
+              echo ""
+              echo "- Repository: $REPO"
+              echo "- Branch: $BRANCH"
+              echo "- Path: $API_PATH"
+              echo "- Status: StartFailed ($STATUS)"
+              if [ -n "$MESSAGE" ] && [ "$MESSAGE" != "null" ]; then
+                echo ""
+                echo "### Error"
+                echo ""
+                echo "$MESSAGE"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "status=Error" >> "$GITHUB_OUTPUT"
+          echo "Start SBOM scan failed with status code $STATUS, message: $MESSAGE"
+          exit 1
+        fi
+
+        SCANID=$(echo "$RESULT" | jq -r .scanId)
+        URL=$(echo "$RESULT" | jq -r .uploadUrl)
+
+        if [ -z "$SCANID" ] || [ -z "$URL" ] || [ "$SCANID" = "null" ] || [ "$URL" = "null" ]; then
+          echo "Failed to obtain scanId or uploadUrl from API response: $RESULT"
+          exit 1
+        fi
+
+        echo "scanId=$SCANID"
+        echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
+        echo "Uploading SBOM..."
+        curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM_ABS" "$URL"
+        echo "Upload completed."
+
+        START_TIME=$(date +%s)
+        echo "Waiting for scan completion (timeout: ${SCAN_TIMEOUT}s)..."
+
+        while true; do
+          CURRENT_TIME=$(date +%s)
+          ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+
+          if [ "$ELAPSED_TIME" -ge "$SCAN_TIMEOUT" ]; then
+            echo "Scan did not complete within the timeout."
+            exit 1
+          fi
+
+          RESPONSE=$(curl ${CURL_FLAGS:-} -sS -X GET \
+            "${API}/v1/sbom/scan/${SCANID}/status" \
+            -H "accept: application/json" \
+            -H "Authorization: Bearer ${TOKEN}")
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
+          REASON=$(echo "$RESPONSE" | jq -r '.reason // empty')
+          ERRORS_JSON=$(echo "$RESPONSE" | jq -c '.errors // []')
+
+          write_summary() {
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              {
+                echo "## Arnica SBOM Scan"
+                echo ""
+                echo "- Repository: $REPO"
+                echo "- Branch: $BRANCH"
+                echo "- Path: $API_PATH"
+                echo "- Scan ID: $SCANID"
+                echo "- Status: $STATUS"
+                if [ -n "$REASON" ] && [ "$REASON" != "null" ]; then
+                  echo "- Reason: $REASON"
+                fi
+                if [ -n "$ERRORS_JSON" ] && [ "$ERRORS_JSON" != "null" ] && [ "$ERRORS_JSON" != "[]" ]; then
+                  echo ""
+                  echo "### Errors"
+                  echo ""
+                  echo "$ERRORS_JSON" | jq -r '.[] | "- \(.)"'
+                fi
+                TOTAL=$(echo "$RESPONSE" | jq -r '.findingsSummary.total // 0')
+                if [ "$TOTAL" != "0" ] && [ -n "$TOTAL" ] && [ "$TOTAL" != "null" ]; then
+                  CRITICAL=$(echo "$RESPONSE" | jq -r '.findingsSummary.critical // 0')
+                  HIGH=$(echo "$RESPONSE" | jq -r '.findingsSummary.high // 0')
+                  MEDIUM=$(echo "$RESPONSE" | jq -r '.findingsSummary.medium // 0')
+                  LOW=$(echo "$RESPONSE" | jq -r '.findingsSummary.low // 0')
+                  INFO=$(echo "$RESPONSE" | jq -r '.findingsSummary.info // 0')
+                  echo ""
+                  echo "### Findings Summary"
+                  echo ""
+                  echo "| severity | count |"
+                  echo "|---|---|"
+                  echo "| critical | $CRITICAL |"
+                  echo "| high | $HIGH |"
+                  echo "| medium | $MEDIUM |"
+                  echo "| low | $LOW |"
+                  echo "| info | $INFO |"
+                  echo "| total | $TOTAL |"
+                fi
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+          ERRORS=$(echo "$RESPONSE" | jq -r '.errors // empty')
+
+          if [ "$STATUS" = "Failure" ]; then
+            echo "One or more policy violations found."
+            echo "status=Failure" >> "$GITHUB_OUTPUT"
+            write_summary
+            case "${ON_FINDINGS:-fail}" in
+              alert|pass) exit 0 ;;
+              *) exit 1 ;;
+            esac
+          fi
+
+          if [ "$STATUS" = "Error" ]; then
+            echo "Errors encountered during SBOM scan."
+            echo "status=Error" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 1
+          fi
+
+          if [ "$STATUS" = "Skipped" ]; then
+            echo "Scan skipped."
+            echo "status=Skipped" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 0
+          fi
+
+          if [ "$STATUS" = "Success" ]; then
+            echo "Scan completed successfully."
+            echo "status=Success" >> "$GITHUB_OUTPUT"
+            write_summary
+            exit 0
+          fi
+
+          sleep 5
+        done
+
+        echo "status=Timeout" >> "$GITHUB_OUTPUT"
+        echo "Scan did not complete within the timeout."
+        exit 1
+
