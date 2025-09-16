@@ -115,7 +115,7 @@ with:
 
 ### Prerequisites
 
-- You need an Arnica account. Sign in at `https://app.arnica.io`.
+- Sign in to Arnica with a privileged `admin` account. Sign in at `https://app.arnica.io`.
 
 ### API key and permissions
 
