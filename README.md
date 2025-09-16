@@ -1,13 +1,6 @@
 <p align="center">
   <a href="https://app.arnica.io">
-    <svg width="220" height="60" viewBox="0 0 220 60" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arnica">
-      <title>Arnica</title>
-      <g fill="none" stroke="#6aa8a0" stroke-width="10" stroke-linecap="square">
-        <path d="M20 10 L10 10 L10 50 L20 50"/>
-        <path d="M200 10 L210 10 L210 50 L200 50"/>
-      </g>
-      <text x="110" y="38" text-anchor="middle" font-family="-apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="28" fill="#000">Arnica</text>
-    </svg>
+    <img src="docs/images/arnica-logo.png" alt="Arnica" height="60" />
   </a>
 </p>
 
