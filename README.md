@@ -46,15 +46,17 @@ jobs:
 
 ### Inputs
 
-- **repository-url** (required): Repository URL associated with the SBOM.
-- **branch** (optional, default `main`): Branch to associate with the scan.
-- **sbom-file** (required): Path to the SBOM JSON file. Absolute path or relative to `scan-path`.
-- **scan-path** (required): Repository path associated with the scan (e.g., `/` or `services/api`).
-- **api-base-url** (required, default `https://api.arnica.io`): Arnica API base URL.
-- **api-token** (optional): Arnica API token. Prefer passing via secret env `ARNICA_API_TOKEN`.
-- **curl-flags** (optional): Extra flags passed to `curl`.
-- **scan-timeout-seconds** (optional, default `900`): Timeout for scan completion.
-- **on-findings** (optional, default `fail`): Behavior when findings are detected. One of `fail`|`alert`|`pass`.
+| Name                   | Required | Default                 | Description                                                          |
+| ---------------------- | :------: | ----------------------- | -------------------------------------------------------------------- | ------- | ------ |
+| `repository-url`       |   Yes    |                         | Repository URL associated with the SBOM                              |
+| `branch`               |    No    | `main`                  | Branch to associate with the scan                                    |
+| `sbom-file`            |   Yes    |                         | Path to the SBOM JSON file. Absolute path or relative to `scan-path` |
+| `scan-path`            |   Yes    |                         | Repository path for the scan (e.g., `/` or `services/api`)           |
+| `api-base-url`         |   Yes    | `https://api.arnica.io` | Arnica API base URL                                                  |
+| `api-token`            |    No    |                         | Arnica API token; prefer secret env `ARNICA_API_TOKEN`               |
+| `curl-flags`           |    No    |                         | Extra flags passed to `curl`                                         |
+| `scan-timeout-seconds` |    No    | `900`                   | Timeout (seconds) to wait for scan completion                        |
+| `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: `fail`                          | `alert` | `pass` |
 
 ### Outputs
 
@@ -121,7 +123,7 @@ UI example:
 
 ### Security and best practices
 
-- Pin this action to a specific tag (e.g., `@v1`) or a commit SHA.
+- Always pin this action to a specific commit SHA; avoid mutable tags (prefer `@<commit-sha>` over `@v1`).
 - Pass the API token through secrets (`ARNICA_API_TOKEN`); avoid hardcoding tokens.
 - Use minimal workflow `permissions`.
 - Review workflow logs for any sensitive output before sharing.
