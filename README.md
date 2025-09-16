@@ -1,6 +1,13 @@
 <p align="center">
   <a href="https://app.arnica.io">
-    <img src="docs/images/arnica-logo.png" alt="Arnica" height="60" />
+    <svg width="220" height="60" viewBox="0 0 220 60" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arnica">
+      <title>Arnica</title>
+      <g fill="none" stroke="#6aa8a0" stroke-width="10" stroke-linecap="square">
+        <path d="M20 10 L10 10 L10 50 L20 50"/>
+        <path d="M200 10 L210 10 L210 50 L200 50"/>
+      </g>
+      <text x="110" y="38" text-anchor="middle" font-family="-apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="28" fill="#000">Arnica</text>
+    </svg>
   </a>
 </p>
 
@@ -49,7 +56,7 @@ jobs:
 ### Inputs
 
 | Name                   | Required | Default                 | Description                                                          |
-| ---------------------- | :------: | ----------------------- | -------------------------------------------------------------------- | ------- | ------ |
+| ---------------------- | :------: | ----------------------- | -------------------------------------------------------------------- |
 | `repository-url`       |   Yes    |                         | Repository URL associated with the SBOM                              |
 | `branch`               |    No    | `main`                  | Branch to associate with the scan                                    |
 | `sbom-file`            |   Yes    |                         | Path to the SBOM JSON file. Absolute path or relative to `scan-path` |
@@ -58,7 +65,7 @@ jobs:
 | `api-token`            |    No    |                         | Arnica API token; prefer secret env `ARNICA_API_TOKEN`               |
 | `curl-flags`           |    No    |                         | Extra flags passed to `curl`                                         |
 | `scan-timeout-seconds` |    No    | `900`                   | Timeout (seconds) to wait for scan completion                        |
-| `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: `fail`                          | `alert` | `pass` |
+| `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: fail, alert, or pass            |
 
 ### Outputs
 
