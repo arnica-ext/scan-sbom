@@ -24,11 +24,13 @@ jobs:
       contents: read
     steps:
       - name: Checkout repo (if SBOM is in this repo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Upload SBOM and wait for scan
         id: arnica
-        uses: arnica-ext/scan-sbom@v1
+        uses: arnica-ext/scan-sbom@main
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
