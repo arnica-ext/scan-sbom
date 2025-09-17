@@ -26,21 +26,26 @@ jobs:
           create_annotated_tag: true
           dry_run: false
 
-      - name: Trigger release workflow
+      - name: Create GitHub Release
         if: steps.tagger.outputs.new_tag
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.0
         with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release.yml',
-              ref: 'main',
-              inputs: {
-                tag: '${{ steps.tagger.outputs.new_tag }}'
-              }
-            });
-            console.log('Triggered release workflow for tag: ${{ steps.tagger.outputs.new_tag }}');
+          tag_name: ${{ steps.tagger.outputs.new_tag }}
+          generate_release_notes: true
 
-      # The existing Release workflow (triggered on tags v*) will publish notes
-      # and update the major tag automatically. Nothing else is needed here.
+      - name: Update major tag (e.g., v1)
+        if: steps.tagger.outputs.new_tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG_NAME="${{ steps.tagger.outputs.new_tag }}"
+          MAJOR_TAG=$(echo "$TAG_NAME" | sed -E 's/^v([0-9]+).*/v\1/')
+          echo "Updating $MAJOR_TAG to point to $TAG_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$MAJOR_TAG" --force
+
+      # Release creation and major tag update handled directly in this workflow
