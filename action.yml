@@ -242,7 +242,15 @@ runs:
                     echo ""
                     echo "| severity | type | title | status | recommendation |"
                     echo "|---|---|---|---|---|"
-                    echo "$FINDINGS_JSON" | jq -r '.[] | "| " + (.severity // "") + " | " + (.type // "") + " | " + ((.title // "") | gsub("\\|"; "\\\\|")) + " | " + (.status // "") + " | " + ((.recommendation // "N/A") | gsub("\\|"; "\\\\|")) + " |"'
+                    echo "$FINDINGS_JSON" | jq -r '
+                      .[] |
+                        "| " +
+                        (.severity // "") + " | " +
+                        (.type // "") + " | " +
+                        ((.title // "") | gsub("\\|"; "\\\\|")) + " | " +
+                        (.status // "") + " | " +
+                        ((.recommendation // "N/A") | gsub("\\|"; "\\\\|")) + " |"
+                    '
                   fi
                 fi
               } >> "$GITHUB_STEP_SUMMARY"
