@@ -30,7 +30,7 @@ inputs:
     description: Arnica API token (prefer passing via secrets)
     required: false
   on-findings:
-    description: Behavior when findings are detected (Failure). One of fail|alert|pass
+    description: Controls behavior when policy violations or findings are detected. One of fail|alert|pass
     required: false
     default: fail
   cdxgen-version:
