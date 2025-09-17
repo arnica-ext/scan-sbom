@@ -26,5 +26,21 @@ jobs:
           create_annotated_tag: true
           dry_run: false
 
+      - name: Trigger release workflow
+        if: steps.tagger.outputs.new_tag
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: 'main',
+              inputs: {
+                tag: '${{ steps.tagger.outputs.new_tag }}'
+              }
+            });
+            console.log('Triggered release workflow for tag: ${{ steps.tagger.outputs.new_tag }}');
+
       # The existing Release workflow (triggered on tags v*) will publish notes
       # and update the major tag automatically. Nothing else is needed here.
