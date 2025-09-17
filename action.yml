@@ -36,7 +36,7 @@ inputs:
   cdxgen-version:
     description: Version of @cyclonedx/cdxgen to install
     required: false
-    default: "11.3.2"
+    default: "9.9.4"
 outputs:
   scan-id:
     description: Arnica scan identifier
@@ -348,7 +348,7 @@ runs:
             exit 0
           fi
 
-          sleep 5
+          sleep 10
         done
 
         # This should never be reached due to timeout check above
