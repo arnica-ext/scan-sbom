@@ -15,9 +15,9 @@ inputs:
     description: Repository path to associate with the scan
     required: true
   api-base-url:
-    description: Arnica API base URL (e.g., https://api.arnica.io)
+    description: Arnica API base URL (e.g., https://api.app.arnica.io)
     required: true
-    default: https://api.arnica.io
+    default: https://api.app.arnica.io
   curl-flags:
     description: Additional flags to pass to curl (optional)
     required: false

@@ -34,10 +34,9 @@ jobs:
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
-          repository-url: https://github.com/owner/repo
-          branch: main
+          repository-url: ${{ github.repository }}
+          branch: ${{ github.ref_name }}
           scan-path: .
-          api-base-url: https://api.arnica.io
 
       - name: Print outputs
         run: |
