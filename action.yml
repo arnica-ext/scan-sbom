@@ -285,8 +285,21 @@ runs:
               CONSOLE_FINDINGS=$(echo "$RESPONSE" | jq -r '(.findingsSummary.findings // []) | length')
               if [ "$CONSOLE_FINDINGS" -gt 0 ]; then
                 echo "Top findings:"
-                echo "$RESPONSE" | jq -r '(.findingsSummary.findings // [])[0:10][] | [.severity, .type, .title, .status, (.recommendation // "N/A")] | @tsv' 2>/dev/null \
-                  | awk -F '\t' '{printf "- [%s] %s (%s) status=%s\n  Recommendation: %s\n", $1, $3, $2, $4, $5}' || echo "Error parsing findings for console output"
+                FINDINGS_JSON=$(echo "$RESPONSE" | jq -c '(.findingsSummary.findings // [])[0:10][]' 2>/dev/null)
+                if [ -n "$FINDINGS_JSON" ]; then
+                  i=0
+                  echo "$FINDINGS_JSON" | while IFS= read -r finding; do
+                    SEVERITY=$(echo "$finding" | jq -r '.severity // "N/A"')
+                    TYPE=$(echo "$finding" | jq -r '.type // "N/A"')
+                    TITLE=$(echo "$finding" | jq -r '.title // "N/A"')
+                    STATUS=$(echo "$finding" | jq -r '.status // "N/A"')
+                    RECOMMENDATION=$(echo "$finding" | jq -r '.recommendation // "N/A"')
+                    printf -- "- [%s] %s (%s) status=%s\n  Recommendation: %s\n" "$SEVERITY" "$TITLE" "$TYPE" "$STATUS" "$RECOMMENDATION"
+                    i=$((i+1))
+                  done
+                else
+                  echo "Error parsing findings for console output"
+                fi
               else
                 echo "No detailed findings available yet (findings may still be processing)"
               fi
