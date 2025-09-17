@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://app.arnica.io">
-    <img src="docs/images/arnica-logo.png" alt="Arnica" height="60" />
+    <img src="docs/images/arnica-logo.png" alt="Arnica" height="120" />
   </a>
 </p>
 
