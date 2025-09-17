@@ -138,6 +138,12 @@ runs:
         STATUS=$(echo "$RESULT" | jq -r .statusCode)
         if [ "$STATUS" != "null" ] && [ "$STATUS" -ne 200 ]; then
           MESSAGE=$(echo "$RESULT" | jq -r .message)
+          echo "API Error Response:"
+          echo "Status Code: $STATUS"
+          echo "Message: $MESSAGE"
+          echo "Full Response:"
+          echo "$RESULT" | jq '.' 2>/dev/null || echo "$RESULT"
+
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             {
               echo "## Arnica SBOM Scan"
@@ -170,8 +176,20 @@ runs:
         echo "scanId=$SCANID"
         echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
         echo "Uploading SBOM..."
-        curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
-        echo "Upload completed."
+        echo "Upload URL: ${URL:0:50}..." # Show first 50 chars of URL for debugging
+        echo "SBOM file size: $(wc -c < "$SBOM") bytes"
+
+        UPLOAD_RESPONSE=$(curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -w "%{http_code}" -o /tmp/upload_response.txt -X PUT --data-binary @"$SBOM" "$URL")
+        UPLOAD_STATUS=$?
+
+        if [ $UPLOAD_STATUS -eq 0 ] && [ "$UPLOAD_RESPONSE" = "200" ]; then
+          echo "Upload completed successfully"
+        else
+          echo "Upload failed with status $UPLOAD_STATUS, HTTP code: $UPLOAD_RESPONSE"
+          echo "Upload response:"
+          cat /tmp/upload_response.txt 2>/dev/null || echo "No response body"
+          exit 1
+        fi
 
         START_TIME=$(date +%s)
         echo "Waiting for scan completion (timeout: ${SCAN_TIMEOUT}s)..."
