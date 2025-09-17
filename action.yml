@@ -170,6 +170,14 @@ runs:
         echo "scanId=$SCANID"
         echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
         echo "Uploading SBOM..."
+        echo "SBOM file size: $(wc -c < "$SBOM") bytes"
+        echo "First 500 chars of SBOM content:"
+        head -c 500 "$SBOM"
+        echo ""
+        echo "Last 200 chars of SBOM content:"
+        tail -c 200 "$SBOM"
+        echo ""
+
         curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
         echo "Upload completed."
 
@@ -190,6 +198,10 @@ runs:
             "${API}/v1/sbom/scan/${SCANID}/status" \
             -H "accept: application/json" \
             -H "Authorization: Bearer ${TOKEN}")
+
+          echo "=== FULL API RESPONSE DEBUG ==="
+          echo "$RESPONSE" | jq '.' 2>/dev/null || echo "Raw response: $RESPONSE"
+          echo "=== END DEBUG ==="
 
           STATUS=$(echo "$RESPONSE" | jq -r '.status // empty')
           REASON=$(echo "$RESPONSE" | jq -r '.reason // empty')
