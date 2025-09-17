@@ -107,8 +107,6 @@ runs:
           TOKEN="$API_TOKEN_INPUT"
         elif [ -n "${ARNICA_API_TOKEN:-}" ]; then
           TOKEN="$ARNICA_API_TOKEN"
-        elif [ -f .token ]; then
-          TOKEN=$(<.token)
         else
           echo "Error: API token is missing. Pass env ARNICA_API_TOKEN from a secret."
           exit 1
