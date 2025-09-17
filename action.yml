@@ -81,7 +81,6 @@ runs:
         API: ${{ inputs.api-base-url }}
         CURL_FLAGS: ${{ inputs.curl-flags }}
         SCAN_TIMEOUT_SECONDS: ${{ inputs.scan-timeout-seconds }}
-        ARNICA_API_TOKEN: ${{ env.ARNICA_API_TOKEN }}
         API_TOKEN_INPUT: ${{ inputs.api-token }}
         ON_FINDINGS: ${{ inputs.on-findings }}
       run: |
@@ -147,7 +146,7 @@ runs:
               echo ""
               echo "- Repository: $REPO"
               echo "- Branch: $BRANCH"
-              echo "- Path: ${{ inputs.scan-path }}"
+              echo "- Path: $SCAN_PATH"
               echo "- Status: StartFailed ($STATUS)"
               if [ -n "$MESSAGE" ] && [ "$MESSAGE" != "null" ]; then
                 echo ""
