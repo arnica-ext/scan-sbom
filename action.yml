@@ -177,6 +177,9 @@ runs:
         echo "Last 200 chars of SBOM content:"
         tail -c 200 "$SBOM"
         echo ""
+        echo "=== FULL SBOM STRUCTURE DEBUG ==="
+        jq '.' "$SBOM" 2>/dev/null || echo "Failed to parse SBOM as JSON"
+        echo "=== END SBOM DEBUG ==="
 
         curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
         echo "Upload completed."
