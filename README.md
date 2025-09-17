@@ -4,9 +4,9 @@
   </a>
 </p>
 
-## Arnica SBOM Upload – GitHub Action
+## Arnica SBOM Scan – GitHub Action
 
-Reusable GitHub Action that uploads a Software Bill of Materials (SBOM) to Arnica and waits for the scan to complete, returning the scan identifier and final status.
+Reusable GitHub Action that generates a Software Bill of Materials (SBOM) using cdxgen, uploads it to Arnica, and waits for the scan to complete, returning the scan identifier and final status.
 
 ### Quickstart
 
@@ -28,16 +28,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Upload SBOM and wait for scan
+      - name: Generate SBOM and scan with Arnica
         id: arnica
-        uses: arnica-ext/scan-sbom@main
+        uses: arnica-ext/scan-sbom@v1
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
           repository-url: https://github.com/owner/repo
           branch: main
-          sbom-file: sboms/containers/sbom1.json
-          scan-path: /
+          scan-path: .
           api-base-url: https://api.arnica.io
 
       - name: Print outputs
@@ -48,17 +47,17 @@ jobs:
 
 ### Inputs
 
-| Name                   | Required | Default                 | Description                                                          |
-| ---------------------- | :------: | ----------------------- | -------------------------------------------------------------------- |
-| `repository-url`       |   Yes    |                         | Repository URL associated with the SBOM                              |
-| `branch`               |    No    | `main`                  | Branch to associate with the scan                                    |
-| `sbom-file`            |   Yes    |                         | Path to the SBOM JSON file. Absolute path or relative to `scan-path` |
-| `scan-path`            |   Yes    |                         | Repository path for the scan (e.g., `/` or `services/api`)           |
-| `api-base-url`         |   Yes    | `https://api.arnica.io` | Arnica API base URL                                                  |
-| `api-token`            |    No    |                         | Arnica API token; prefer secret env `ARNICA_API_TOKEN`               |
-| `curl-flags`           |    No    |                         | Extra flags passed to `curl`                                         |
-| `scan-timeout-seconds` |    No    | `900`                   | Timeout (seconds) to wait for scan completion                        |
-| `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: fail, alert, or pass            |
+| Name                   | Required | Default                 | Description                                                                |
+| ---------------------- | :------: | ----------------------- | -------------------------------------------------------------------------- |
+| `repository-url`       |   Yes    |                         | Repository URL associated with the SBOM                                    |
+| `branch`               |    No    | `main`                  | Branch to associate with the scan                                          |
+| `scan-path`            |   Yes    |                         | Directory path to scan and generate SBOM for (e.g., `.` or `services/api`) |
+| `api-base-url`         |   Yes    | `https://api.arnica.io` | Arnica API base URL                                                        |
+| `api-token`            |    No    |                         | Arnica API token; prefer secret env `ARNICA_API_TOKEN`                     |
+| `curl-flags`           |    No    |                         | Extra flags passed to `curl`                                               |
+| `scan-timeout-seconds` |    No    | `900`                   | Timeout (seconds) to wait for scan completion                              |
+| `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: fail, alert, or pass                  |
+| `cdxgen-version`       |    No    | `11.3.2`                | Version of @cyclonedx/cdxgen to install                                    |
 
 ### Outputs
 
@@ -80,10 +79,10 @@ permissions:
 
 ### Examples
 
-Upload a local SBOM file in a subdirectory and alert (do not fail) on policy violations:
+Scan a subdirectory and alert (do not fail) on policy violations:
 
 ```yaml
-- name: Upload SBOM and wait for scan
+- name: Generate SBOM and scan with Arnica
   id: arnica
   uses: arnica-ext/scan-sbom@v1
   env:
@@ -91,19 +90,8 @@ Upload a local SBOM file in a subdirectory and alert (do not fail) on policy vio
   with:
     repository-url: https://github.com/owner/repo
     branch: ${{ github.ref_name }}
-    sbom-file: bom.json
     scan-path: services/payments
     on-findings: alert
-```
-
-Use an absolute path to the SBOM file:
-
-```yaml
-with:
-  repository-url: https://github.com/owner/repo
-  branch: main
-  sbom-file: /home/runner/work/repo/repo/sbom.json
-  scan-path: /
 ```
 
 ### Prerequisites
