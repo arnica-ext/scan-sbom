@@ -1,0 +1,30 @@
+name: Auto Version on Main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Bump version and push tag
+        id: tagger
+        uses: mathieudutour/github-tag-action@a22cf08638b34d5badda920f9daf6e72c477b07b # v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: v
+          release_branches: main
+          default_bump: patch
+          create_annotated_tag: true
+          dry_run: false
+
+      # The existing Release workflow (triggered on tags v*) will publish notes
+      # and update the major tag automatically. Nothing else is needed here.
