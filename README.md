@@ -30,7 +30,7 @@ jobs:
 
       - name: Generate SBOM and scan with Arnica
         id: arnica
-        uses: arnica-ext/scan-sbom@v1.0.8
+        uses: arnica-ext/scan-sbom@v1.0.9
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
