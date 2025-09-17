@@ -44,6 +44,8 @@ jobs:
       - name: Update major tag (e.g., v1)
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           TAG_NAME="${GITHUB_REF_NAME}"
@@ -52,4 +54,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -fa "$MAJOR_TAG" -m "Update $MAJOR_TAG tag to $TAG_NAME"
-          git push origin "$MAJOR_TAG" --force
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git "$MAJOR_TAG" --force
