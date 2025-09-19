@@ -177,6 +177,7 @@ runs:
         echo "DEBUG: SBOM: SBOM file: $SBOM"
         echo "DEBUG: API_PATH: ls -la $API_PATH"
         echo "DEBUG: SCAN_PATH: ls -la $SCAN_PATH"
+        echo "DEBUG: REQUEST_BODY: $REQUEST_BODY"
         echo "DEBUG: tools $(cat $SBOM |jq  '.metadata.tools.components[0]')"
 
         curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
