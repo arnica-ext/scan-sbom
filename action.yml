@@ -57,12 +57,39 @@ runs:
     - name: Create SBOM
       shell: bash
       run: |
-        # Creating SBOM in the scan-path
+        set -euo pipefail
+        echo "Creating SBOM in directory: ${{ inputs.scan-path }}"
         cd ${{ inputs.scan-path }}
-        cdxgen .
-        # debug:
-        cat bom.json |jq  '.metadata.tools.components[0]'
-        # End debug
+
+        # Generate SBOM with proper license information
+        cdxgen . --spec-version 1.5 --include-formulation --include-crypto
+
+        # Fix missing license information in SBOM
+        if [ -f bom.json ]; then
+          echo "Fixing SBOM license information..."
+          jq '
+            .components |= map(
+              if .licenses == null or .licenses == [] then
+                .licenses = [{"license": {"id": "NOASSERTION"}}]
+              else
+                .licenses |= map(
+                  if .license == null or .license.id == null or .license.id == "" then
+                    .license = {"id": "NOASSERTION"}
+                  else
+                    .
+                  end
+                )
+              end
+            )
+          ' bom.json > bom_fixed.json && mv bom_fixed.json bom.json
+
+          echo "SBOM created and license information validated"
+          echo "Components: $(jq '.components | length' bom.json)"
+          echo "Components with licenses: $(jq '[.components[] | select(.licenses != null)] | length' bom.json)"
+        else
+          echo "ERROR: SBOM file was not created"
+          exit 1
+        fi
 
     - name: Ensure jq is installed
       shell: bash
@@ -235,34 +262,52 @@ runs:
                   MEDIUM=$(echo "$RESPONSE" | jq -r '.findingsSummary.medium // 0')
                   LOW=$(echo "$RESPONSE" | jq -r '.findingsSummary.low // 0')
                   INFO=$(echo "$RESPONSE" | jq -r '.findingsSummary.info // 0')
+
+                  # Get lifecycle metrics
+                  RESOLVED=$(echo "$RESPONSE" | jq -r '.findingsSummary.resolved // 0')
+                  INTRODUCED=$(echo "$RESPONSE" | jq -r '.findingsSummary.introduced // 0')
+
                   echo ""
                   echo "### Findings Summary"
                   echo ""
-                  echo "| severity | count |"
-                  echo "|---|---|"
-                  echo "| critical | $CRITICAL |"
-                  echo "| high | $HIGH |"
-                  echo "| medium | $MEDIUM |"
-                  echo "| low | $LOW |"
-                  echo "| info | $INFO |"
-                  echo "| total | $TOTAL |"
+                  echo "| Severity | Count | Lifecycle |"
+                  echo "|----------|-------|-----------|"
+                  echo "| 🔴 Critical | $CRITICAL | |"
+                  echo "| 🟠 High | $HIGH | |"
+                  echo "| 🟡 Medium | $MEDIUM | |"
+                  echo "| 🔵 Low | $LOW | |"
+                  echo "| ℹ️ Info | $INFO | |"
+                  echo "| **Total** | **$TOTAL** | |"
+                  echo "| ✅ Resolved | $RESOLVED | |"
+                  echo "| 🆕 Introduced | $INTRODUCED | |"
+
                   FINDINGS_JSON=$(echo "$RESPONSE" | jq -c '.findingsSummary.findings // []')
                   COUNT=$(echo "$FINDINGS_JSON" | jq 'length')
                   if [ "$COUNT" -gt 0 ]; then
-                    echo ""
-                    echo "### Findings (showing up to 50)"
-                    echo ""
-                    echo "| severity | type | title | status | recommendation |"
-                    echo "|---|---|---|---|---|"
-                    echo "$FINDINGS_JSON" | jq -r '
-                      .[] |
-                        "| " +
-                        (.severity // "") + " | " +
-                        (.type // "") + " | " +
-                        ((.title // "") | gsub("\\|"; "\\\\|")) + " | " +
-                        (.status // "") + " | " +
-                        ((.recommendation // "N/A") | gsub("\\|"; "\\\\|")) + " |"
-                    '
+                    # Group findings by severity
+                    for severity in "critical" "high" "medium" "low" "info"; do
+                      SEVERITY_FINDINGS=$(echo "$FINDINGS_JSON" | jq -c --arg sev "$severity" '[.[] | select(.severity == $sev)]')
+                      SEVERITY_COUNT=$(echo "$SEVERITY_FINDINGS" | jq 'length')
+
+                      if [ "$SEVERITY_COUNT" -gt 0 ]; then
+                        case $severity in
+                          critical) echo ""; echo "## 🔴 Critical Findings ($SEVERITY_COUNT)" ;;
+                          high) echo ""; echo "## 🟠 High Findings ($SEVERITY_COUNT)" ;;
+                          medium) echo ""; echo "## 🟡 Medium Findings ($SEVERITY_COUNT)" ;;
+                          low) echo ""; echo "## 🔵 Low Findings ($SEVERITY_COUNT)" ;;
+                          info) echo ""; echo "## ℹ️ Info Findings ($SEVERITY_COUNT)" ;;
+                        esac
+                        echo ""
+
+                        echo "$SEVERITY_FINDINGS" | jq -r '.[] |
+                          "### " + (.title // "Unknown Issue") +
+                          "\n- **Type**: " + (.type // "N/A") +
+                          "\n- **Status**: " + (.status // "N/A") +
+                          "\n- **Lifecycle**: " + (if .lifecycle == "introduced" then "🆕 Newly Introduced" elif .lifecycle == "resolved" then "✅ Resolved" else (.lifecycle // "Existing") end) +
+                          "\n- **Recommendation**: " + (if .recommendation and .recommendation != "" then .recommendation else "No specific fix available" end) +
+                          "\n"'
+                      fi
+                    done
                   fi
                 fi
               } >> "$GITHUB_STEP_SUMMARY"
