@@ -129,7 +129,7 @@ runs:
         REQUEST_BODY=$(jq -n \
           --arg repo "$REPO" \
           --arg branch "$BRANCH" \
-          --arg path "$SCAN_PATH" \
+          --arg path "$API_PATH" \
           '{repositoryUrl: $repo, branch: $branch, path: $path}')
 
         RESULT=$(curl ${CURL_FLAGS:-} -Ss -X 'POST' \
