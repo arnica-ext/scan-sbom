@@ -60,6 +60,9 @@ runs:
         # Creating SBOM in the scan-path
         cd ${{ inputs.scan-path }}
         cdxgen .
+        # debug:
+        cat bom.json |jq  '.metadata.tools.components[0]'
+        # End debug
 
     - name: Ensure jq is installed
       shell: bash
@@ -171,6 +174,8 @@ runs:
         echo "scanId=$SCANID"
         echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
         echo "Uploading SBOM..."
+        echo "DEBUG: SBOM file: $SBOM"
+        echo "DEBUG: tools $(cat bom.json |jq  '.metadata.tools.components[0]')"
 
         curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
         echo "Upload completed."
