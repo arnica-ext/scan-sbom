@@ -10,18 +10,23 @@ Reusable GitHub Action that generates a Software Bill of Materials (SBOM) using 
 
 ### Quickstart
 
-Add a workflow that uses this action. Replace `owner/repo` and the token secret with your values.
+Add a workflow that runs on PR events and merges to SLA branches for complete security coverage.
 
 ```yaml
-name: Upload SBOM to Arnica
+name: Arnica SBOM Security Scan
 on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main, develop, staging, production] # Add your SLA branches
   workflow_dispatch:
 
 jobs:
-  upload:
+  security-scan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write # For PR comments
     steps:
       - name: Checkout repo (if SBOM is in this repo)
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -34,16 +39,33 @@ jobs:
         env:
           ARNICA_API_TOKEN: ${{ secrets.ARNICA_API_TOKEN }}
         with:
-          repository-url: https://github.com/owner/repo
-          branch: main
+          repository-url: ${{ github.repository }}
+          branch: ${{ github.head_ref || github.ref_name }}
           scan-path: .
-          api-base-url: https://api.arnica.io
 
-      - name: Print outputs
+      - name: Print scan results
         run: |
-          echo "scan-id=${{ steps.arnica.outputs['scan-id'] }}"
-          echo "status=${{ steps.arnica.outputs.status }}"
+          echo "Scan ID: ${{ steps.arnica.outputs['scan-id'] }}"
+          echo "Status: ${{ steps.arnica.outputs.status }}"
 ```
+
+### Recommended Workflow Triggers
+
+For complete security coverage and accurate issue lifecycle tracking:
+
+- **Pull Requests**: `opened`, `synchronize` - Catches issues before merge
+- **Main/Release Branches**: `push` to `main`, `develop`, `staging`, `production`
+- **Build Pipelines**: Add to any workflow where code is built or deployed
+- **Manual Runs**: `workflow_dispatch` for on-demand scans
+
+### Where to View Reports
+
+Security scan results appear in multiple locations:
+
+1. **GitHub Step Summary**: Detailed findings report in the workflow run
+2. **Arnica Dashboard**: Full vulnerability management at `https://app.arnica.io`
+3. **Workflow Logs**: Console output with scan details
+4. **PR Comments** (if configured): Summary posted to pull requests
 
 ### Inputs
 
