@@ -36,7 +36,7 @@ inputs:
   cdxgen-version:
     description: Version of @cyclonedx/cdxgen to install
     required: false
-    default: "11.5.0"
+    default: "11.3.2"
 outputs:
   scan-id:
     description: Arnica scan identifier
