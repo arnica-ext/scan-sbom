@@ -57,39 +57,10 @@ runs:
     - name: Create SBOM
       shell: bash
       run: |
-        set -euo pipefail
-        echo "Creating SBOM in directory: ${{ inputs.scan-path }}"
+        # Creating SBOM in the scan-path
         cd ${{ inputs.scan-path }}
-
-        # Generate SBOM with proper license information
-        cdxgen . --spec-version 1.5 --include-formulation --include-crypto
-
-        # Fix missing license information in SBOM
-        if [ -f bom.json ]; then
-          echo "Fixing SBOM license information..."
-          jq '
-            .components |= map(
-              if .licenses == null or .licenses == [] then
-                .licenses = [{"license": {"id": "NOASSERTION"}}]
-              else
-                .licenses |= map(
-                  if .license == null or .license.id == null or .license.id == "" then
-                    .license = {"id": "NOASSERTION"}
-                  else
-                    .
-                  end
-                )
-              end
-            )
-          ' bom.json > bom_fixed.json && mv bom_fixed.json bom.json
-
-          echo "SBOM created and license information validated"
-          echo "Components: $(jq '.components | length' bom.json)"
-          echo "Components with licenses: $(jq '[.components[] | select(.licenses != null)] | length' bom.json)"
-        else
-          echo "ERROR: SBOM file was not created"
-          exit 1
-        fi
+        cdxgen .
+        cat bom.json |jq  '.metadata.tools.components[0]'
 
     - name: Ensure jq is installed
       shell: bash
@@ -201,11 +172,6 @@ runs:
         echo "scanId=$SCANID"
         echo "scan_id=$SCANID" >> "$GITHUB_OUTPUT"
         echo "Uploading SBOM..."
-        echo "DEBUG: SBOM: SBOM file: $SBOM"
-        echo "DEBUG: API_PATH: ls -la $API_PATH"
-        echo "DEBUG: SCAN_PATH: ls -la $SCAN_PATH"
-        echo "DEBUG: REQUEST_BODY: $REQUEST_BODY"
-        echo "DEBUG: tools $(cat $SBOM |jq  '.metadata.tools.components[0]')"
 
         curl -H "Content-Type: application/json" ${CURL_FLAGS:-} -Ss -X PUT --data-binary @"$SBOM" "$URL"
         echo "Upload completed."

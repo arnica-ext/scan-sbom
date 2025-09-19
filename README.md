@@ -28,8 +28,8 @@ jobs:
       contents: read
       pull-requests: write # For PR comments
     steps:
-      - name: Checkout repo (if SBOM is in this repo)
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -79,7 +79,6 @@ Security scan results appear in multiple locations:
 | `curl-flags`           |    No    |                         | Extra flags passed to `curl`                                               |
 | `scan-timeout-seconds` |    No    | `900`                   | Timeout (seconds) to wait for scan completion                              |
 | `on-findings`          |    No    | `fail`                  | Behavior when findings are detected: fail, alert, or pass                  |
-| `cdxgen-version`       |    No    | `11.3.2`                | Version of @cyclonedx/cdxgen to install                                    |
 
 ### Outputs
 
@@ -89,6 +88,7 @@ Security scan results appear in multiple locations:
 ### Environment variables
 
 - **ARNICA_API_TOKEN**: Alternative to the `api-token` input. Recommended to pass via `${{ secrets.ARNICA_API_TOKEN }}`.
+- **CDXGEN_VERSION**: Version of @cyclonedx/cdxgen to install (default: `11.3.2`).
 
 ### Permissions
 
